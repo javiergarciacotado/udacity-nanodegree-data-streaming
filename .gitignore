@@ -1,8 +1,10 @@
 # User-specific stuff
 .idea/
+.DS_Store
 
 # IntelliJ
 out/
 
 # Distribution / packaging
 env/
+__pycache__/
