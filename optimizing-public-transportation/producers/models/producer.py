@@ -8,6 +8,10 @@ from confluent_kafka.avro import AvroProducer
 
 logger = logging.getLogger(__name__)
 
+SCHEMA_REGISTRY = "http://localhost:8081"
+BOOTSTRAP_SERVER = "PLAINTEXT://localhost:9092"
+
+
 class Producer:
     """Defines and provides common functionality amongst Producers"""
 
@@ -67,10 +71,10 @@ class Producer:
         admin_client = AdminClient({
             "bootstrap.servers": BOOTSTRAP_SERVER
         })
-        topics = admin_client.list_topics()
 
-        futures = admin_client.create_topics(
-            [
+        if not self.exist_topic(admin_client):
+
+            create_topic = admin_client.create_topics([
                 NewTopic(
                     topic=self.topic_name,
                     num_partitions=self.num_partitions,
@@ -82,12 +86,23 @@ class Producer:
                         "file.delete.delay.ms": "100",
                     },
                 )
-            ]
-        )
+            ])
 
-        logger.info(f"Confirming topic {self.topic_name} creation")
+            for topic, future in create_topic.items():
+                try:
+                    future.result()
+                    logger.info(f"Confirmed topic {topic} creation")
+                except Exception as e:
+                    logger.error(f"failed to create topic {topic}: {e}")
 
-        logger.info("topic creation kafka integration incomplete - skipping")
+    def exist_topic(self, admin_client):
+        topics_meta = admin_client.list_topics()
+
+        if self.topic_name in topics_meta.topics:
+            logger.info(f"Topic {self.topic_name} exists")
+            return True
+
+        return False
 
     def time_millis(self):
         return int(round(time.time() * 1000))
